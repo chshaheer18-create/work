@@ -1,3 +1,0 @@
-streamlit>=1.36
-notion-client==2.2.1
-requests>=2.31
