@@ -3,207 +3,51 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "5bae0592-6636-48ec-b2c8-9184057d5d1a",
+      "id": "trigger-3",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const staticData = $getWorkflowStaticData('node');\n\nconst materials = [\n  { name: \"Cement (OPC)\", base: 1450, unit: \"per bag\" },\n  { name: \"Steel (Grade 60)\", base: 285000, unit: \"per ton\" },\n  { name: \"Bricks\", base: 14, unit: \"per piece\" },\n  { name: \"Sand\", base: 3200, unit: \"per 100 cft\" },\n  { name: \"Crush/Gravel\", base: 4100, unit: \"per 100 cft\" },\n  { name: \"Paint (Emulsion)\", base: 1850, unit: \"per gallon\" },\n  { name: \"Wood (Deodar)\", base: 3800, unit: \"per cft\" },\n  { name: \"Tiles (Ceramic)\", base: 95, unit: \"per sq ft\" }\n];\n\nconst today = new Date().toISOString().slice(0, 10);\nconst oldPrices = staticData.oldPrices || {};\nconst newPrices = {};\nconst changes = [];\n\nmaterials.forEach(m => {\n  // Simulated daily fluctuation - replace with a real HTTP Request node output when you have a live source\n  const price = m.base + Math.floor(Math.random() * 61) - 30;\n  newPrices[m.name] = price;\n  const old = oldPrices[m.name];\n  if (old !== undefined && old !== price) {\n    const direction = price > old ? 'UP' : 'DOWN';\n    changes.push(`${m.name}: ${old} -> ${price} (${direction})`);\n  }\n});\n\nstaticData.oldPrices = newPrices;\n\nconst priceListText = materials.map(m => `${m.name}: PKR ${newPrices[m.name].toLocaleString()} (${m.unit})`).join('\\n');\nconst changesText = changes.length ? changes.join('\\n') : 'No price changes since last check.';\n\nreturn [{\n  json: {\n    date: today,\n    priceList: priceListText,\n    changes: changesText\n  }\n}];"
-      },
-      "id": "017389ea-1bf4-4730-b339-ee8355ca45c7",
-      "name": "Generate & Compare Prices",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        224,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "draft",
-        "subject": "=Material Price Check - {{ $json.date }}",
-        "message": "=<h3>Material Price Report - {{ $json.date }}</h3><p><b>Today's Prices:</b><br>{{ $json.priceList.replace(/\\n/g, '<br>') }}</p><p><b>Changes since last check:</b><br>{{ $json.changes.replace(/\\n/g, '<br>') }}</p>",
-        "options": {}
-      },
-      "id": "4c9fd6a5-a0a9-4db7-8afa-93cf92719f4e",
-      "name": "Send Price Report",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [
-        448,
-        0
-      ],
-      "webhookId": "a60550b4-6078-4de5-91b1-5faf21f2ca61",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "jCCCGKOZ8Xg1WpIC",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "https://api.open-meteo.com/v1/forecast?latitude=33.6844&longitude=73.0479&daily=precipitation_probability_max&timezone=auto",
-        "options": {}
-      },
-      "id": "472282d4-917d-421c-a7ab-3ef16790f166",
-      "name": "Get Weather Forecast",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        528,
-        208
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const weather = $input.first().json;\n\nconst tomorrow = new Date();\ntomorrow.setDate(tomorrow.getDate() + 1);\nconst tomorrowStr = tomorrow.toISOString().slice(0, 10);\n\nconst dates = weather.daily.time;\nconst probs = weather.daily.precipitation_probability_max;\nlet rainChance = 0;\nfor (let i = 0; i < dates.length; i++) {\n  if (dates[i] === tomorrowStr) { rainChance = probs[i]; break; }\n}\n\n// Sample site schedule - replace this block with a Google Sheets 'Read Rows' node output\nconst sites = [\"DHA Phase 6 Site\", \"Bahria Town Block C\", \"F-10 Residency\"];\nconst tasks = [\n  { name: \"Concrete Pouring\", outdoor: true },\n  { name: \"Roofing Work\", outdoor: true },\n  { name: \"Excavation\", outdoor: true },\n  { name: \"Electrical Wiring\", outdoor: false },\n  { name: \"Steel Fixing\", outdoor: true },\n  { name: \"Painting (Exterior)\", outdoor: true }\n];\n\nconst scheduledTomorrow = [];\nfor (let i = 0; i < 4; i++) {\n  const site = sites[Math.floor(Math.random() * sites.length)];\n  const task = tasks[Math.floor(Math.random() * tasks.length)];\n  if (task.outdoor) scheduledTomorrow.push(`${site} - ${task.name}`);\n}\n\nconst atRisk = rainChance >= 50 ? scheduledTomorrow : [];\nconst atRiskText = atRisk.length ? atRisk.join('\\n') : 'No outdoor tasks at risk tomorrow.';\n\nreturn [{\n  json: {\n    tomorrow: tomorrowStr,\n    rainChance: rainChance,\n    atRiskTasks: atRiskText\n  }\n}];"
-      },
-      "id": "7e4d2608-8a66-4019-8a23-2f35244456fb",
-      "name": "Match Weather to Schedule",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        752,
-        208
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "draft",
-        "subject": "=Weather Alert - {{ $json.tomorrow }}",
-        "message": "=<h3>Weather Alert - Tomorrow ({{ $json.tomorrow }})</h3><p><b>Rain Probability:</b> {{ $json.rainChance }}%</p><p><b>At-Risk Outdoor Tasks:</b><br>{{ $json.atRiskTasks.replace(/\\n/g, '<br>') }}</p>",
-        "options": {}
-      },
-      "id": "9afeea08-433e-404c-be9d-df1957080b42",
-      "name": "Send Weather Alert",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [
-        976,
-        208
-      ],
-      "webhookId": "c196141c-d38d-455c-ba05-98fc7f58ffdf",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "jCCCGKOZ8Xg1WpIC",
-          "name": "Gmail account"
-        }
-      }
+      "position": [240, 300]
     },
     {
       "parameters": {
         "jsCode": "// Sample data - replace this block with a Google Sheets 'Read Rows' node output\nconst companies = [\n  \"ABC Electrical Works\", \"Metro Plumbing Co\", \"Skyline Steel Fabricators\",\n  \"Prime Concrete Solutions\", \"National Scaffolding Services\",\n  \"Elite HVAC Contractors\", \"Al-Rehman Glass and Aluminum\", \"Modern Interiors Pvt Ltd\"\n];\nconst docTypes = [\"Insurance Certificate\", \"Safety Compliance License\", \"Trade License\", \"Tax Registration\"];\nconst offsets = [-15, -5, 3, 7, 15, 25, 45, 60, -2, 10];\n\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\nconst results = [];\n\ncompanies.forEach((company, idx) => {\n  const docType = docTypes[Math.floor(Math.random() * docTypes.length)];\n  const offset = offsets[idx % offsets.length];\n  const expiry = new Date(today);\n  expiry.setDate(expiry.getDate() + offset);\n  const daysLeft = offset;\n\n  if (daysLeft <= 30) {\n    let message = daysLeft < 0\n      ? `expired ${Math.abs(daysLeft)} day(s) ago`\n      : (daysLeft === 0 ? 'expires today' : `expires in ${daysLeft} day(s)`);\n\n    results.push({\n      name: company,\n      email: 'REPLACE_WITH_REAL_EMAIL@example.com',\n      docType: docType,\n      expiryDate: expiry.toISOString().slice(0, 10),\n      message: message\n    });\n  }\n});\n\nreturn results.map(r => ({ json: r }));"
       },
-      "id": "8dbdb0c0-ecf0-4e7e-81ef-a758a99ace19",
+      "id": "code-3",
       "name": "Generate & Filter Expiring Docs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1296,
-        320
-      ]
+      "position": [460, 300]
     },
     {
       "parameters": {
-        "resource": "draft",
+        "sendTo": "={{ $json.email }}",
         "subject": "=Document Renewal Reminder - {{ $json.docType }}",
         "message": "=<p>Dear {{ $json.name }},</p><p>Your <b>{{ $json.docType }}</b> on file with us <b>{{ $json.message }}</b> (Expiry Date: {{ $json.expiryDate }}).</p><p>Please send us an updated copy before this expires to avoid delays on-site.</p><p>Thank you,<br>Your Company Name</p>",
         "options": {}
       },
-      "id": "dafacf1f-5661-464e-b24b-a4d0862f2845",
+      "id": "gmail-3",
       "name": "Send Reminder to Subcontractor",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [
-        1520,
-        320
-      ],
-      "webhookId": "6ac74fba-3db5-44c4-a9e0-3ecd29969ea6",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "jCCCGKOZ8Xg1WpIC",
-          "name": "Gmail account"
-        }
-      }
+      "position": [680, 300],
+      "webhookId": ""
     }
   ],
-  "pinData": {},
   "connections": {
     "Manual Trigger": {
       "main": [
         [
-          {
-            "node": "Generate & Compare Prices",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate & Compare Prices": {
-      "main": [
-        [
-          {
-            "node": "Send Price Report",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Weather Forecast": {
-      "main": [
-        [
-          {
-            "node": "Match Weather to Schedule",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Match Weather to Schedule": {
-      "main": [
-        [
-          {
-            "node": "Send Weather Alert",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Generate & Filter Expiring Docs", "type": "main", "index": 0 }
         ]
       ]
     },
     "Generate & Filter Expiring Docs": {
       "main": [
         [
-          {
-            "node": "Send Reminder to Subcontractor",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Send Reminder to Subcontractor", "type": "main", "index": 0 }
         ]
       ]
     }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
-  },
-  "versionId": "32d76acb-d642-42b1-bfbd-dfc2b59011df",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "ddc7dc074e64910ee112c4889709b9480d2a754a7d41c89d53d8bda7319229ac"
-  },
-  "nodeGroups": [],
-  "id": "PQV0TQVlpmHscNEX",
-  "tags": []
+  }
 }
